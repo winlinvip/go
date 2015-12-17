@@ -1,1 +1,0 @@
-pkg net, method (*TCPConn) Writev([][]uint8) (int, error)

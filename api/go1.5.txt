@@ -871,6 +871,7 @@ pkg net/mail, type AddressParser struct, WordDecoder *mime.WordDecoder
 pkg net/smtp, method (*Client) TLSConnectionState() (tls.ConnectionState, bool)
 pkg net/url, method (*URL) EscapedPath() string
 pkg net/url, type URL struct, RawPath string
+pkg net, method (*TCPConn) Writev([][]uint8) (int, error)
 pkg os, func LookupEnv(string) (string, bool)
 pkg os/signal, func Ignore(...os.Signal)
 pkg os/signal, func Reset(...os.Signal)
