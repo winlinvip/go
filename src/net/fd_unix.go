@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+	"unsafe"
 )
 
 // Network file descriptor.
@@ -315,6 +316,64 @@ func (fd *netFD) Write(p []byte) (nn int, err error) {
 			break
 		}
 		if err == syscall.EAGAIN {
+			if err = fd.pd.WaitWrite(); err == nil {
+				continue
+			}
+		}
+		if err != nil {
+			break
+		}
+		if n == 0 {
+			err = io.ErrUnexpectedEOF
+			break
+		}
+	}
+	if _, ok := err.(syscall.Errno); ok {
+		err = os.NewSyscallError("write", err)
+	}
+	return nn, err
+}
+
+func (fd *netFD) Writev(p [][]byte) (nn int, err error) {
+	if err := fd.writeLock(); err != nil {
+		return 0, err
+	}
+	defer fd.writeUnlock()
+	if err := fd.pd.PrepareWrite(); err != nil {
+		return 0, err
+	}
+	// convert to iovec for writev.
+	iovecs := make([]syscall.Iovec, len(p))
+	var total int
+	for i, iovec := range p {
+		iovecs[i] = syscall.Iovec{&iovec[0], uint64(len(iovec))}
+		total += len(iovec)
+	}
+	for {
+		// send from last work point.
+		var index int
+		var left int = nn
+		for i, iov := range p {
+			if left = left - len(iov); left < 0 {
+				index = i
+				break
+			}
+		}
+		iovec := p[index]
+		iovec = iovec[len(iovec) + left:]
+		iovecs[index] = syscall.Iovec{&iovec[0], uint64(len(iovec))}
+		// to ptr and len.
+		ptr := uintptr(unsafe.Pointer(&iovecs[index]))
+		nbPtr := uintptr(len(iovecs) - index)
+		var n int
+		r0, _, e0 := syscall.Syscall(syscall.SYS_WRITEV, uintptr(fd.sysfd), ptr, nbPtr)
+		if n = int(r0); n > 0 {
+			nn += n
+		}
+		if nn == total {
+			break
+		}
+		if err = syscall.Errno(e0); err == syscall.EAGAIN {
 			if err = fd.pd.WaitWrite(); err == nil {
 				continue
 			}

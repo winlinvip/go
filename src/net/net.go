@@ -188,6 +188,17 @@ func (c *conn) Write(b []byte) (int, error) {
 	return n, err
 }
 
+func (c *conn) Writev(b [][]byte) (int, error) {
+	if !c.ok() {
+		return 0,syscall.EINVAL
+	}
+	n,err := c.fd.Writev(b)
+	if err != nil {
+		err = &OpError{Op: "writev", Net: c.fd.net, Source: c.fd.laddr, Addr: c.fd.raddr, Err: err}
+	}
+	return n,err
+}
+
 // Close closes the connection.
 func (c *conn) Close() error {
 	if !c.ok() {
