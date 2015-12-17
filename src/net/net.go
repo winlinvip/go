@@ -188,7 +188,7 @@ func (c *conn) Write(b []byte) (int, error) {
 	return n, err
 }
 
-func (c *conn) Writev(b [][]byte) (int, error) {
+func (c *conn) writev(b [][]byte) (int, error) {
 	if !c.ok() {
 		return 0,syscall.EINVAL
 	}

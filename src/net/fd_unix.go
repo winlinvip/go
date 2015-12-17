@@ -367,13 +367,16 @@ func (fd *netFD) Writev(p [][]byte) (nn int, err error) {
 		nbPtr := uintptr(len(iovecs) - index)
 		var n int
 		r0, _, e0 := syscall.Syscall(syscall.SYS_WRITEV, uintptr(fd.sysfd), ptr, nbPtr)
+		if e0 != 0 {
+			err = syscall.Errno(e0)
+		}
 		if n = int(r0); n > 0 {
 			nn += n
 		}
 		if nn == total {
 			break
 		}
-		if err = syscall.Errno(e0); err == syscall.EAGAIN {
+		if err == syscall.EAGAIN {
 			if err = fd.pd.WaitWrite(); err == nil {
 				continue
 			}

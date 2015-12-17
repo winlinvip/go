@@ -52,6 +52,10 @@ func newTCPConn(fd *netFD) *TCPConn {
 	return c
 }
 
+func (c *TCPConn) Writev(b [][]byte) (n int, err error) {
+	return c.conn.writev(b)
+}
+
 // ReadFrom implements the io.ReaderFrom ReadFrom method.
 func (c *TCPConn) ReadFrom(r io.Reader) (int64, error) {
 	if n, err, handled := sendFile(c.fd, r); handled {
