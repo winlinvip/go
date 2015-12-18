@@ -387,7 +387,7 @@ func (fd *netFD) Writev(p [][]byte) (nn int, err error) {
 		if n = int(r0); n > 0 {
 			nn += n
 		}
-		//fmt.Println(fmt.Sprintf("	%v:%v %v/%v %v", index, left, nn, total, err))
+		//fmt.Println(fmt.Sprintf("	%v:%v:%v %v/%v %v", index, left, len(p[index]) - len(iovec), nn, total, err))
 		if nn == total {
 			break
 		}
