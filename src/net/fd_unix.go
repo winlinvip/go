@@ -32,7 +32,7 @@ type netFD struct {
 	raddr       Addr
 
 	// writev cache.
-	iovecs 		[]syscall.Iovec
+	iovecs []syscall.Iovec
 
 	// wait server
 	pd pollDesc
@@ -347,14 +347,15 @@ func (fd *netFD) Writev(p [][]byte) (nn int, err error) {
 		return 0, err
 	}
 	// convert to iovec for writev.
-	if fd.iovecs == nil {
-		fd.iovecs = make([]syscall.Iovec, 0)
+	if cap(fd.iovecs) < len(p) {
+		fd.iovecs = make([]syscall.Iovec, 0, 2*len(p))
 	}
-	iovecs := fd.iovecs[0:0]
+	iovecs := fd.iovecs[0:len(p)]
 	// total bytes to sent.
 	var total int
-	for _, iovec := range p {
-		iovecs = append(iovecs, syscall.Iovec{&iovec[0], uint64(len(iovec))})
+	for i, iovec := range p {
+		iovecs[i].Base = &iovec[0]
+		iovecs[i].Len = uint64(len(iovec))
 		total += len(iovec)
 	}
 	//fmt.Println(fmt.Sprintf("writev %v iovecs, total %v bytes", len(p), total))
@@ -368,9 +369,9 @@ func (fd *netFD) Writev(p [][]byte) (nn int, err error) {
 				break
 			}
 		}
-		iovec := p[index]
-		iovec = iovec[len(iovec) + left:]
-		iovecs[index] = syscall.Iovec{&iovec[0], uint64(len(iovec))}
+		iovec := p[index][len(p[index])+left:]
+		iovecs[index].Base = &iovec[0]
+		iovecs[index].Len = uint64(len(iovec))
 		// to ptr and len.
 		ptr := uintptr(unsafe.Pointer(&iovecs[index]))
 		nbPtr := uintptr(len(iovecs) - index)
