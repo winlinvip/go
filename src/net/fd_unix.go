@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 	"unsafe"
+	//"fmt"
 )
 
 // Network file descriptor.
@@ -349,6 +350,7 @@ func (fd *netFD) Writev(p [][]byte) (nn int, err error) {
 		iovecs[i] = syscall.Iovec{&iovec[0], uint64(len(iovec))}
 		total += len(iovec)
 	}
+	//fmt.Println(fmt.Sprintf("writev %v iovecs, total %v bytes", len(p), total))
 	for {
 		// send from last work point.
 		var index int
@@ -365,6 +367,11 @@ func (fd *netFD) Writev(p [][]byte) (nn int, err error) {
 		// to ptr and len.
 		ptr := uintptr(unsafe.Pointer(&iovecs[index]))
 		nbPtr := uintptr(len(iovecs) - index)
+		// max iovec to send is 1024
+		// TODO: FIXME: read from sysconf.
+		if int(nbPtr) > 1024 {
+			nbPtr = uintptr(1024)
+		}
 		var n int
 		r0, _, e0 := syscall.Syscall(syscall.SYS_WRITEV, uintptr(fd.sysfd), ptr, nbPtr)
 		if e0 != 0 {
@@ -373,6 +380,7 @@ func (fd *netFD) Writev(p [][]byte) (nn int, err error) {
 		if n = int(r0); n > 0 {
 			nn += n
 		}
+		//fmt.Println(fmt.Sprintf("	%v:%v %v/%v %v", index, left, nn, total, err))
 		if nn == total {
 			break
 		}
