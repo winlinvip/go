@@ -31,6 +31,9 @@ type netFD struct {
 	laddr       Addr
 	raddr       Addr
 
+	// writev cache.
+	iovecs 		[]syscall.Iovec
+
 	// wait server
 	pd pollDesc
 }
@@ -344,10 +347,14 @@ func (fd *netFD) Writev(p [][]byte) (nn int, err error) {
 		return 0, err
 	}
 	// convert to iovec for writev.
-	iovecs := make([]syscall.Iovec, len(p))
+	if fd.iovecs == nil {
+		fd.iovecs = make([]syscall.Iovec, 0)
+	}
+	iovecs := fd.iovecs[0:0]
+	// total bytes to sent.
 	var total int
-	for i, iovec := range p {
-		iovecs[i] = syscall.Iovec{&iovec[0], uint64(len(iovec))}
+	for _, iovec := range p {
+		iovecs = append(iovecs, syscall.Iovec{&iovec[0], uint64(len(iovec))})
 		total += len(iovec)
 	}
 	//fmt.Println(fmt.Sprintf("writev %v iovecs, total %v bytes", len(p), total))
